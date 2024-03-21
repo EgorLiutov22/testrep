@@ -73,7 +73,7 @@ def news_detail(id):
 
 @app.route('/')
 def index():
-    return 'Hello world!'
+    return render_template("index.html", news=news)
 
 
 @app.route('/total/<int:a>/<int:b>')
