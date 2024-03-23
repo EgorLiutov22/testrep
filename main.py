@@ -1,9 +1,14 @@
 import flask
-from flask import render_template
+from flask import render_template, url_for, redirect
 import requests
 import datetime
 
+from flask_wtf import FlaskForm
+from wtforms import StringField, TextAreaField, SubmitField
+from wtforms.validators import DataRequired
+
 app = flask.Flask(__name__)
+app.config['SECRET_KEY'] = 'SECRET_KEY'
 
 news = [{'title': 'Удивительное событие в школе',
          'text': 'Вчера в местной школе произошло удивительное событие - все '
@@ -25,6 +30,17 @@ news = [{'title': 'Удивительное событие в школе',
                  'в том числе - пакетики конфет и игрушки в виде косточек. '
                  'Конкурс вызвал большой интерес у посетителей парка, '
                  'и его решили повторить в более масштабном формате.'}]
+
+
+class Opinion(FlaskForm):
+    name = StringField('Имя', validators=[DataRequired(message="Поле не должно быть пустым")])
+    message = TextAreaField('Отзыв', validators=[DataRequired(message="Поле не должно быть пустым")])
+    submit = SubmitField('Отправить')
+
+class AddNews(FlaskForm):
+    name = StringField('Заголовок', validators=[DataRequired(message="Поле не должно быть пустым")])
+    message = TextAreaField('Текст новости', validators=[DataRequired(message="Поле не должно быть пустым")])
+    submit = SubmitField('Отправить')
 
 
 def isPrime(n):
@@ -71,11 +87,31 @@ def news_detail(id):
     return render_template('news_details.html', title= title, text=text)
 
 
+@app.route('/add_news', methods=['GET', 'POST'])
+def add_news():
+    form = AddNews()
+    chat_messages = []
+    if form.validate_on_submit():
+        name = form.name.data
+        message = form.message.data
+        chat_messages.append({'name': name, 'message': message})
+        return redirect(url_for('index'))
+    return render_template('add_news.html',
+                           chat_messages=chat_messages,
+                           form=form)
+
 @app.route('/')
 def index():
-    return 'Hello world!'
-
-
+    form = Opinion()
+    chat_messages = []
+    if form.validate_on_submit():
+        name = form.name.data
+        message = form.message.data
+        chat_messages.append({'name': name, 'message': message})
+        return redirect(url_for('chat'))
+    return render_template('index.html',
+                           chat_messages=chat_messages,
+                           form=form)
 @app.route('/total/<int:a>/<int:b>')
 def total(a, b):
     return f'Сумма {a + b}'
