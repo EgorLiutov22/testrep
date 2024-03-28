@@ -3,12 +3,18 @@ from flask import render_template, url_for, redirect
 import requests
 import datetime
 
+from flask_sqlalchemy import SQLAlchemy
+
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, SubmitField
-from wtforms.validators import DataRequired
+from wtforms import StringField, TextAreaField, EmailField, SelectField, SubmitField
+from  wtforms.validators import DataRequired, Optional
 
 app = flask.Flask(__name__)
 app.config['SECRET_KEY'] = 'SECRET_KEY'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite3'
+
+db = SQLAlchemy(app)
 
 news = [{'title': 'Удивительное событие в школе',
          'text': 'Вчера в местной школе произошло удивительное событие - все '
@@ -32,10 +38,25 @@ news = [{'title': 'Удивительное событие в школе',
                  'и его решили повторить в более масштабном формате.'}]
 
 
+class Feedback(db.Model):
+    id = db.Column(db.Integer(), primary_key=True)
+    name = db.Column(db.String(127), nullable=False)
+    text = db.Column(db.Text(), nullable=False)
+    email = db.Column(db.String(127), nullable=False)
+    rating = db.Column(db.Integer())
+
+with app.app_context():
+    db.create_all()
+
+
 class Opinion(FlaskForm):
     name = StringField('Имя', validators=[DataRequired(message="Поле не должно быть пустым")])
-    message = TextAreaField('Отзыв', validators=[DataRequired(message="Поле не должно быть пустым")])
+    text = TextAreaField('Текст отзыва',
+                         validators=[DataRequired(message="Поле не должно быть пустым")])
+    email = EmailField('Ваш email', validators=[Optional()])
+    rating = SelectField('Ваша оценка?', choices=[1, 2, 3, 4, 5])
     submit = SubmitField('Отправить')
+
 
 class AddNews(FlaskForm):
     name = StringField('Заголовок', validators=[DataRequired(message="Поле не должно быть пустым")])
@@ -80,11 +101,12 @@ def get_date_or_time(mode):
     else:
         return '<h1>Простите, но я вас не понимать.</h1>'
 
+
 @app.route('/news/<int:id>/')
 def news_detail(id):
-    title = news[id-1]['title']
-    text = news[id-1]['text']
-    return render_template('news_details.html', title= title, text=text)
+    title = news[id - 1]['title']
+    text = news[id - 1]['text']
+    return render_template('news_details.html', title=title, text=text)
 
 
 @app.route('/add_news', methods=['GET', 'POST'])
@@ -100,18 +122,26 @@ def add_news():
                            chat_messages=chat_messages,
                            form=form)
 
+
 @app.route('/')
 def index():
     form = Opinion()
     chat_messages = []
+    feedbacks = Feedback.query.all()
     if form.validate_on_submit():
-        name = form.name.data
-        message = form.message.data
-        chat_messages.append({'name': name, 'message': message})
+        feedback = Feedback(
+            name=form.name.data,
+            text=form.text.data,
+            email=form.email.data,
+            rating=form.rating.data)
+        db.session.add(feedback)
+        db.session.commit()
         return redirect(url_for('chat'))
     return render_template('index.html',
                            chat_messages=chat_messages,
                            form=form)
+
+
 @app.route('/total/<int:a>/<int:b>')
 def total(a, b):
     return f'Сумма {a + b}'
