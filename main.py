@@ -45,8 +45,31 @@ class Feedback(db.Model):
     email = db.Column(db.String(127), nullable=False)
     rating = db.Column(db.Integer())
 
+class Category(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    news = db.relationship('News', back_populates='category')
+
+    def __repr__(self):
+        return f'Category {self.id}: ({self.title})'
+
+class News(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), unique=True, nullable=False)
+    text = db.Column(db.Text, nullable=False)
+    created_date = db.Column(db.DateTime, default=datetime.datetime.utcnow())
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=True)
+    category = db.relationship('Category', back_populates='news')
+
+    def __repr__(self):
+        return f'News {self.id}: ({self.title[:20]}...)'
+
 with app.app_context():
     db.create_all()
+
+def get_categories():
+    c = Category.query.all()
+    return [(category.id, category.title) for category in c]
 
 
 class Opinion(FlaskForm):
@@ -61,6 +84,7 @@ class Opinion(FlaskForm):
 class AddNews(FlaskForm):
     name = StringField('Заголовок', validators=[DataRequired(message="Поле не должно быть пустым")])
     message = TextAreaField('Текст новости', validators=[DataRequired(message="Поле не должно быть пустым")])
+    category = SelectField(choices=get_categories())
     submit = SubmitField('Отправить')
 
 
@@ -117,6 +141,8 @@ def add_news():
         name = form.name.data
         message = form.message.data
         chat_messages.append({'name': name, 'message': message})
+        news.category_id = form.category.data
+
         return redirect(url_for('index'))
     return render_template('add_news.html',
                            chat_messages=chat_messages,
@@ -128,6 +154,7 @@ def index():
     form = Opinion()
     chat_messages = []
     feedbacks = Feedback.query.all()
+    categories = Category.query.all()
     if form.validate_on_submit():
         feedback = Feedback(
             name=form.name.data,
@@ -139,8 +166,19 @@ def index():
         return redirect(url_for('chat'))
     return render_template('index.html',
                            chat_messages=chat_messages,
-                           form=form)
+                           form=form, categories=categories)
 
+
+@app.route('/category/<int:id>')
+def news_in_category(id):
+    c = Category.query.get(id)
+    news = c.news
+    name = c.tiltle
+    categories = Category.query.all()
+    return render_template('category.html',
+                           news=news,
+                           category_name=name,
+                           categories=categories)
 
 @app.route('/total/<int:a>/<int:b>')
 def total(a, b):
