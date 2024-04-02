@@ -20,14 +20,16 @@ news = [{'title': 'Удивительное событие в школе',
          'text': 'Вчера в местной школе произошло удивительное событие - все '
                  'ученики одновременно зевнули на уроке математики. '
                  'Преподаватель был так поражен этим коллективным зевком, '
-                 'что решил отменить контрольную работу.'},
+                 'что решил отменить контрольную работу.',
+         'id':0},
         {'title': 'Случай в зоопарке',
          'text': 'В зоопарке города произошел необычный случай - ленивец '
                  'решил не лениться и взобрался на самое высокое дерево в '
                  'своем вольере. Посетители зоопарка были поражены такой '
                  'активностью и начали снимать ленивца на видео. В итоге он '
                  'получил свой собственный канал на YouTube, где он размещает '
-                 'свои приключения.'},
+                 'свои приключения.',
+         'id':1},
         {'title': 'Самый красивый пёс',
          'text': 'Сегодня в парке прошел необычный конкурс - "Самый красивый '
                  'пёс". Участники конкурса были так красивы, что судьи не '
@@ -35,7 +37,8 @@ news = [{'title': 'Удивительное событие в школе',
                  'ничейным, а участники получили награды за участие, '
                  'в том числе - пакетики конфет и игрушки в виде косточек. '
                  'Конкурс вызвал большой интерес у посетителей парка, '
-                 'и его решили повторить в более масштабном формате.'}]
+                 'и его решили повторить в более масштабном формате.',
+         'id':2}]
 
 
 class Feedback(db.Model):
@@ -68,7 +71,8 @@ with app.app_context():
     db.create_all()
 
 def get_categories():
-    c = Category.query.all()
+    with app.app_context():
+        c = Category.query.all()
     return [(category.id, category.title) for category in c]
 
 
@@ -151,22 +155,24 @@ def add_news():
 
 @app.route('/')
 def index():
-    form = Opinion()
-    chat_messages = []
-    feedbacks = Feedback.query.all()
-    categories = Category.query.all()
-    if form.validate_on_submit():
-        feedback = Feedback(
-            name=form.name.data,
-            text=form.text.data,
-            email=form.email.data,
-            rating=form.rating.data)
-        db.session.add(feedback)
-        db.session.commit()
-        return redirect(url_for('chat'))
-    return render_template('index.html',
-                           chat_messages=chat_messages,
-                           form=form, categories=categories)
+    return render_template('index.html', news=news)
+# def index():
+#     form = Opinion()
+#     chat_messages = []
+#     feedbacks = Feedback.query.all()
+#     categories = Category.query.all()
+#     if form.validate_on_submit():
+#         feedback = Feedback(
+#             name=form.name.data,
+#             text=form.text.data,
+#             email=form.email.data,
+#             rating=form.rating.data)
+#         db.session.add(feedback)
+#         db.session.commit()
+#         return redirect(url_for('chat'))
+#     return render_template('index.html',
+#                            chat_messages=chat_messages,
+#                            form=form, categories=categories)
 
 
 @app.route('/category/<int:id>')
